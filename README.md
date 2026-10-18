@@ -31,26 +31,28 @@ UI aesthetic, bahasa Indonesia dan Inggris, maksimal **16 file**, tanpa folder d
 ## 🚀 Panduan Install (Manusia & AI)
 
 ### Prasyarat
-- **Void Linux** (disarankan) dengan `xbps`, atau Linux lain dengan Node.js + Podman
+- **Linux** (semua distribusi — auto-detect apt/dnf/yum/apk/xbps/brew)
 - Node.js v18+ dan npm
 - Podman (rootless)
 - Git
 
 ### Langkah 1: Clone & Install
 ```bash
-git clone <repo-url> zelly
-cd zelly
+git clone https://github.com/vcdit/zelly-notebook.git
+cd zelly-notebook
 chmod +x install.sh
 ./install.sh
 ```
 
 Script `install.sh` akan:
-1. Install `nodejs`, `npm`, `podman`, `git`, `curl` via `xbps`
-2. Buat direktori `/workspace/database` dan `/alpine/database/users` (permission `700`)
-3. Install dependency `npm install`
-4. Salin `.env.example` → `.env`
-5. Pull image `python:3-slim` dan `node:20-slim` ke Podman
-6. Jalankan server di **port 3000**
+1. **Deteksi OS otomatis** (apt/dnf/yum/apk/xbps/brew) → install `nodejs`, `npm`, `podman`, `git`, `curl`
+2. Tanya lokasi database user & notebook (default `/users.sqlite` & `/zelly.sqlite`)
+3. Tanya JWT secret (auto-generate jika kosong)
+4. Buat direktori database (permission `700`)
+5. Install dependency `npm install`
+6. Buat `.env` (permission `600`)
+7. Pull image `python:3-slim`, `node:20-slim`, `bash:latest` ke Podman
+8. Jalankan server di **port 3000**
 
 ### Langkah 2: Akses Aplikasi
 Buka browser: `http://localhost:3000`
@@ -104,28 +106,23 @@ Di dalam notebook, tab **Files** menampilkan penyimpanan notebook (tersimpan di 
 
 ## 🐳 Podman Rootless — Setup Manual (jika tidak pakai install.sh)
 
-### Void Linux
+### Semua Linux (auto-detect)
 ```bash
-sudo xbps-install -Sy podman
-loginctl enable-linger $USER
-podman pull python:3-slim
-podman pull node:20-slim
-```
-
-### Ubuntu / Debian
-```bash
+# Debian/Ubuntu
 sudo apt-get install -y podman
-loginctl enable-linger $USER
-podman pull python:3-slim
-podman pull node:20-slim
-```
-
-### Arch Linux
-```bash
+# Fedora/RHEL/CentOS
+sudo dnf install -y podman
+# Arch
 sudo pacman -S podman
+# Void
+sudo xbps-install -Sy podman
+# Alpine
+sudo apk add podman
+
 loginctl enable-linger $USER
 podman pull python:3-slim
 podman pull node:20-slim
+podman pull bash:latest
 ```
 
 Verifikasi:

@@ -2,8 +2,8 @@
 # =============================================================================
 # ZELLY AUTO INSTALL SCRIPT
 # Jalankan: chmod +x install.sh && sudo ./install.sh
-# Target: Void Linux (xbps). Port 3000.
-# Interaktif: tanya lokasi database user & notebook, sisanya otomatis.
+# Target: Semua Linux (apt/dnf/yum/apk/xbps) & macOS (brew). Port 3000.
+# Auto-detect OS, tanya lokasi database, sisanya otomatis.
 # =============================================================================
 set -e
 
