@@ -1,0 +1,416 @@
+/* ============================================================
+   ZELLY CUSTOM STYLES
+   Aesthetic, modern, responsive, bilingual-ready
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Cell styling */
+.cell-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.cell-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+.cell-card.running {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 1px #818cf8;
+}
+.cell-card.completed {
+  border-color: #34d399;
+}
+.cell-card.error {
+  border-color: #f87171;
+}
+
+.cell-output {
+  display: none;
+}
+.cell-output.show {
+  display: block;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Notebook item */
+.nb-item {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.nb-item:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Language buttons */
+.lang-btn {
+  transition: all 0.2s ease;
+}
+.lang-btn.active {
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+}
+
+/* Terminal shortcut buttons (mobile only) */
+.shortcut-btn {
+  transition: all 0.1s ease;
+}
+.shortcut-btn:active {
+  transform: scale(0.95);
+}
+
+/* Toast animation */
+.animate-in {
+  animation: animateIn 0.3s ease both;
+}
+@keyframes animateIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Cell: saat di-HP, gerakan lagi tetap "ketukan" — bukan zoom browser */
+.cell-card,
+.cell-card * {
+  touch-action: manipulation;
+}
+
+/* Sekat antar zona dalam cell: header | kode | output */
+.cell-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: #eef2f7;
+  border-top: 1px solid #dee5ee;
+  border-bottom: 1px solid #e6ecf4;
+  color: #8a97a8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.cell-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #dbe3ee;
+}
+.cell-code {
+  background: #fafbfd;
+}
+.cell-output-zone {
+  user-select: text;           /* teks output boleh di-copy */
+  -webkit-user-select: text;
+}
+
+/* Modal "Tambah Notebook": selalu di tengah layar, semua device.
+   - flex centering saat tidak hidden (tanpa bergantung urutan class Tailwind)
+   - panel tinggi dibatasi & bisa di-scroll di dalam (layar HP kecil)
+   - klik area gelap = batal */
+#modal-add:not(.hidden) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#modal-panel {
+  animation: animateIn 0.2s ease both;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .terminal-shortcuts-mobile {
+    display: block !important;
+  }
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+/* Utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* ============================================================
+   MOBILE-FIRST FIXES
+   ============================================================ */
+
+/* Prevent horizontal scroll */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Safe area for bottom tab bar (iPhone X+) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Content padding for bottom tab bar */
+#editor-view {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+/* Minimum tap target size */
+button, a, input[type="checkbox"], select, label[for] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Ensure inputs don't force horizontal scroll */
+input, select, textarea {
+  max-width: 100%;
+}
+
+/* Bottom tab bar styling */
+#tab-cell, #tab-files {
+  min-height: 56px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Action toolbar scrollbar */
+#action-toolbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#action-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================================
+   TEMA — 4 pilihan (light / dark / ocean / sunset)
+   Semua permukaan & teks memakai variabel agar tema bisa diganti
+   tanpa menyentuh kelas Tailwind di HTML.
+   ============================================================ */
+html[data-theme="light"], :root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+  --text: #0f172a;
+  --text-2: #334155;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef2ff;
+  --primary-text: #4f46e5;
+  --nav-bg: rgba(255, 255, 255, 0.8);
+  --code-bg: #fafbfd;
+  --divider-bg: #eef2f7;
+  --divider-border: #dee5ee;
+}
+html[data-theme="dark"] {
+  --bg: #0b1220;
+  --surface: #131c31;
+  --surface-2: #0e1626;
+  --surface-3: #1b2740;
+  --text: #e6ebf3;
+  --text-2: #c2ccdb;
+  --muted: #8496ad;
+  --border: #26324a;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-soft: #1c2a4d;
+  --primary-text: #a5b4fc;
+  --nav-bg: rgba(19, 28, 49, 0.85);
+  --code-bg: #0e1626;
+  --divider-bg: #1a2540;
+  --divider-border: #26324a;
+}
+html[data-theme="ocean"] {
+  --bg: #ecf7fb;
+  --surface: #ffffff;
+  --surface-2: #f1f9fc;
+  --surface-3: #e2f1f7;
+  --text: #082f3a;
+  --text-2: #1c4a58;
+  --muted: #5b8494;
+  --border: #cfe6ef;
+  --primary: #0891b2;
+  --primary-hover: #0e7490;
+  --primary-soft: #e0f5fa;
+  --primary-text: #0891b2;
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --code-bg: #f6fbfd;
+  --divider-bg: #e6f4f9;
+  --divider-border: #cfe6ef;
+}
+html[data-theme="sunset"] {
+  --bg: #fdf5ef;
+  --surface: #ffffff;
+  --surface-2: #fdf1e8;
+  --surface-3: #fbe6d7;
+  --text: #3b2416;
+  --text-2: #5c3a25;
+  --muted: #97735b;
+  --border: #f1dcc9;
+  --primary: #ea580c;
+  --primary-hover: #c2410c;
+  --primary-soft: #ffedd5;
+  --primary-text: #ea580c;
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --code-bg: #fef8f2;
+  --divider-bg: #f8ebdf;
+  --divider-border: #f1dcc9;
+}
+
+/* Permukaan & teks mengikuti tema */
+body { background-color: var(--bg) !important; color: var(--text) !important; }
+html[data-theme] .bg-white { background-color: var(--surface) !important; }
+html[data-theme] .bg-white\/80 { background-color: var(--nav-bg) !important; }
+html[data-theme] .bg-slate-50 { background-color: var(--surface-2) !important; }
+html[data-theme] .bg-slate-100 { background-color: var(--surface-3) !important; }
+html[data-theme] .bg-slate-200 { background-color: var(--border) !important; }
+html[data-theme] .hover\:bg-slate-50:hover { background-color: var(--surface-2) !important; }
+html[data-theme] .hover\:bg-slate-100:hover { background-color: var(--surface-3) !important; }
+html[data-theme] .hover\:bg-slate-200:hover { background-color: var(--border) !important; }
+html[data-theme] .hover\:bg-slate-300:hover { background-color: var(--border) !important; }
+
+html[data-theme] .text-slate-900,
+html[data-theme] .text-slate-800,
+html[data-theme] .text-slate-700 { color: var(--text) !important; }
+html[data-theme] .text-slate-600 { color: var(--text-2) !important; }
+html[data-theme] .text-slate-500,
+html[data-theme] .text-slate-400 { color: var(--muted) !important; }
+
+html[data-theme] .border-slate-200,
+html[data-theme] .border-slate-100 { border-color: var(--border) !important; }
+html[data-theme] .divide-slate-100 > * + * { border-color: var(--border) !important; }
+html[data-theme] .hover\:border-indigo-300:hover,
+html[data-theme] .hover\:border-indigo-400:hover { border-color: var(--primary) !important; }
+
+/* Warna utama (accent) mengikuti tema */
+html[data-theme] .bg-indigo-600 { background-color: var(--primary) !important; }
+html[data-theme] .hover\:bg-indigo-700:hover { background-color: var(--primary-hover) !important; }
+html[data-theme] .bg-indigo-50 { background-color: var(--primary-soft) !important; }
+html[data-theme] .bg-indigo-100 { background-color: var(--primary-soft) !important; }
+html[data-theme] .hover\:bg-indigo-50\/50:hover { background-color: var(--primary-soft) !important; }
+html[data-theme] .text-indigo-600,
+html[data-theme] .text-indigo-700,
+html[data-theme] .text-indigo-500 { color: var(--primary-text) !important; }
+html[data-theme] .border-indigo-100 { border-color: var(--primary-soft) !important; }
+html[data-theme] .border-indigo-300 { border-color: var(--primary) !important; }
+html[data-theme] .ring-indigo-500,
+html[data-theme] .focus\:ring-indigo-500:focus { --tw-ring-color: var(--primary); }
+
+/* Komponen kustom ikut tema */
+.cell-card { background: var(--surface); border-color: var(--border); }
+.nb-item:hover { background: var(--surface-2); }
+.cell-divider { background: var(--divider-bg); border-top: 1px solid var(--divider-border); border-bottom: 1px solid var(--divider-border); }
+.cell-divider::after { background: var(--divider-border); }
+.cell-code { background: var(--code-bg); }
+
+/* ============================================================
+   SETTINGS MODAL (bahasa + tema)
+   ============================================================ */
+#modal-settings:not(.hidden) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+#settings-panel { animation: animateIn 0.2s ease both; }
+
+.lang-btn {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.lang-btn.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.theme-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.theme-card:hover { border-color: var(--primary); }
+.theme-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.theme-swatch {
+  border: 1px solid var(--border);
+  background-size: cover;
+}
+.theme-swatch-light { background: linear-gradient(135deg, #ffffff 50%, #cbd5e1 50%); }
+.theme-swatch-dark { background: linear-gradient(135deg, #131c31 50%, #6366f1 50%); }
+.theme-swatch-ocean { background: linear-gradient(135deg, #ffffff 50%, #0891b2 50%); }
+.theme-swatch-sunset { background: linear-gradient(135deg, #ffffff 50%, #ea580c 50%); }
+
+/* ============================================================
+   FASE 2: Cell language selector, stdin zone, file editor
+   ============================================================ */
+
+/* Cell language selector */
+.cell-lang-select {
+  max-width: 90px;
+}
+
+/* Cell stdin zone */
+.cell-stdin-zone {
+  animation: slideDown 0.2s ease;
+}
+
+/* File editor/preview modal */
+#modal-file-editor:not(.hidden),
+#modal-file-preview:not(.hidden),
+#modal-notebook-settings:not(.hidden) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+#modal-file-editor > div,
+#modal-file-preview > div,
+#modal-notebook-settings > div {
+  animation: animateIn 0.2s ease both;
+}
+
+/* Syntax highlighting hint for code cells */
+.cell-code textarea {
+  tab-size: 2;
+}
+
+/* Notebook settings modal */
+#nb-settings-panel {
+  animation: animateIn 0.2s ease both;
+}

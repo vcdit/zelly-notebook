@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Zelly - Notebook Berbasis Cell</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Terapkan tema tersimpan sedini mungkin (biar tidak berkedip saat memuat) -->
+  <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('zelly-theme')||'light');}catch(e){}</script>
+  <link rel="stylesheet" href="/vendor/xterm/css/xterm.css?v=9" />
+  <script src="/socket.io/socket.io.min.js?v=9"></script>
+  <script src="/vendor/xterm/lib/xterm.js?v=9"></script>
+  <link href="/style.css?v=9" rel="stylesheet">
+  <script src="/app.js?v=9" defer></script>
+  <script src="/terminal.js?v=9" defer></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased" id="app-body">
+
+  <!-- Navbar -->
+  <nav class="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3">
+          <button id="btn-settings" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition shrink-0" title="Pengaturan">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shrink-0">Z</div>
+          <span class="text-xl font-bold tracking-tight text-slate-900">Zelly</span>
+          <span class="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded shrink-0">v1.0</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="nav-notif" class="hidden sm:flex relative w-9 h-9 items-center justify-center p-0 text-slate-600 hover:bg-slate-100 rounded-lg transition" title="Notifikasi">
+            <i class="fa-solid fa-bell"></i>
+            <span id="notification-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+          </button>
+          <button id="nav-profile" class="relative w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm hover:bg-indigo-200 transition shrink-0" title="Profil">
+            <span id="nav-avatar">?</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Profile Dropdown -->
+  <div id="profile-dropdown" class="hidden fixed top-16 right-4 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 z-[55] py-2">
+    <div class="px-4 py-3 border-b border-slate-100">
+      <p id="profile-name" class="text-sm font-semibold text-slate-900 truncate">—</p>
+      <p id="profile-email" class="text-xs text-slate-500 truncate">—</p>
+    </div>
+    <div class="py-1">
+      <button onclick="document.getElementById('profile-dropdown').classList.add('hidden'); window.openSettings()" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+        <i class="fa-solid fa-gear text-slate-400"></i> <span id="profile-settings-text">Pengaturan</span>
+      </button>
+      <button onclick="document.getElementById('profile-dropdown').classList.add('hidden'); window.logout()" class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+        <i class="fa-solid fa-sign-out"></i> <span id="profile-logout-text">Keluar</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       AUTH OVERLAY (tampilan saat belum login)
+       ============================================================ -->
+  <div id="auth-overlay" class="fixed inset-0 z-[60] bg-slate-50 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md p-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">Z</div>
+        <h2 class="text-2xl font-bold text-slate-900">Zelly</h2>
+      </div>
+      <h3 class="text-lg font-semibold text-slate-700 mb-1" id="auth-title">Masuk ke Zelly</h3>
+      <p class="text-sm text-slate-500 mb-6" id="auth-desc">Selamat datang kembali. Silakan masuk untuk melanjutkan.</p>
+      <form id="auth-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" id="auth-label-email">Email</label>
+          <input type="email" name="email" required class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" id="auth-label-password">Kata sandi</label>
+          <input type="password" name="password" required class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+        </div>
+        <button type="submit" id="auth-btn-submit" class="w-full px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition">Masuk</button>
+      </form>
+      <p class="mt-6 text-center text-sm text-slate-500">
+        <span id="auth-switch-prompt">Belum punya akun?</span> <button type="button" id="auth-switch-reg" class="text-indigo-600 hover:text-indigo-700 font-medium">Daftar sekarang</button>
+      </p>
+      <div id="auth-register" class="hidden space-y-4 mt-6">
+        <h3 class="text-lg font-semibold text-slate-700" id="auth-reg-title">Buat Akun Baru</h3>
+        <p class="text-sm text-slate-500 mb-4" id="auth-reg-desc">User pertama akan otomatis menjadi owner.</p>
+        <form id="auth-reg-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Nama</label>
+            <input type="text" name="name" required class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <input type="email" name="email" required class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Kata sandi</label>
+            <input type="password" name="password" required class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+          </div>
+          <button type="submit" id="auth-reg-submit" class="w-full px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition">Daftar & Masuk</button>
+        </form>
+        <button type="button" id="auth-switch-login" class="w-full px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Kembali ke masuk</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Notifikasi Dropdown -->
+    <div id="notif-dropdown" class="hidden fixed top-16 right-4 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-[55]">
+      <div class="p-4 border-b border-slate-100">
+        <h3 class="text-sm font-semibold text-slate-900" id="notif-dropdown-title">Notifikasi</h3>
+      </div>
+      <div id="notification-list" class="max-h-60 overflow-y-auto py-2"></div>
+      <div class="p-3 border-t border-slate-100">
+        <button onclick="document.getElementById('notif-dropdown').classList.add('hidden')" class="w-full text-xs text-slate-500 hover:text-indigo-600">Tutup</button>
+      </div>
+    </div>
+
+    <!-- Dashboard / Notebook List -->
+    <div id="dashboard-view">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-3xl font-bold text-slate-900" id="h1-notebooks">Notebook Anda</h1>
+          <p class="text-slate-500 mt-1" id="p-notebooks-desc">Kelola dan buat notebook berbasis cell Anda.</p>
+        </div>
+        <button id="btn-add-notebook" class="w-full lg:w-auto h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-plus"></i> <span id="btn-add-text">Tambah Notebook</span>
+        </button>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="hidden text-center py-20">
+        <div class="w-20 h-20 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-6">
+          <i class="fa-solid fa-book-open text-3xl text-indigo-500"></i>
+        </div>
+        <h2 class="text-xl font-semibold text-slate-900 mb-2" id="empty-title">Belum ada notebook</h2>
+        <p class="text-slate-500 mb-6 max-w-xs mx-auto" id="empty-desc">Buat notebook pertama Anda untuk memulai menulis kode.</p>
+        <button id="btn-empty-add" class="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+          <i class="fa-solid fa-plus"></i> <span id="empty-add-text">Tambah Notebook Pertama</span>
+        </button>
+      </div>
+
+      <!-- Notebook List -->
+      <div id="notebook-list" class="space-y-3">
+        <!-- Notebook items diisi oleh JS -->
+      </div>
+    </div>
+
+    <!-- Notebook Editor View -->
+    <div id="editor-view" class="hidden">
+      <!-- Header: Back + Title + Env + Snapshot -->
+      <div class="flex items-center gap-2 mb-3">
+        <button id="btn-back" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition shrink-0" title="Kembali">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div class="flex-1 min-w-0">
+          <h2 id="editor-title" class="text-base font-bold text-slate-900 truncate">Notebook</h2>
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+            <span id="env-badge">Python</span>
+          </div>
+        </div>
+        <button id="btn-snapshot" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition shrink-0" title="Snapshot">
+          <i class="fa-solid fa-camera"></i>
+        </button>
+      </div>
+
+      <!-- Scrollable Action Toolbar -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1" id="action-toolbar">
+        <button id="btn-toggle-terminal" class="flex items-center gap-2 h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium transition shadow-md shrink-0">
+          <i class="fa-solid fa-terminal"></i> <span id="btn-terminal-text" class="hidden sm:inline">Terminal</span>
+        </button>
+        <button id="btn-add-cell" class="flex items-center gap-2 h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-md transition shrink-0">
+          <i class="fa-solid fa-plus"></i> <span id="btn-add-cell-text" class="hidden sm:inline">Tambah Cell</span>
+        </button>
+        <button id="btn-run-all" class="flex items-center gap-2 h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition shrink-0">
+          <i class="fa-solid fa-play"></i> <span class="hidden sm:inline">Run All</span>
+        </button>
+        <button id="btn-stop-all" class="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition shrink-0">
+          <i class="fa-solid fa-stop"></i> <span class="hidden sm:inline">Stop</span>
+        </button>
+      </div>
+
+      <!-- Panel Cell (default) -->
+      <div id="cells-panel">
+        <!-- Top Bar: Open Terminal + Add Cell -->
+        <div class="flex items-center gap-3 mb-6">
+          <button id="btn-toggle-terminal" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium transition shadow-md">
+            <i class="fa-solid fa-terminal"></i> <span id="btn-terminal-text">Buka Terminal</span>
+          </button>
+          <button id="btn-add-cell" class="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-md transition">
+            <i class="fa-solid fa-plus"></i> <span id="btn-add-cell-text">Tambah Cell</span>
+          </button>
+        </div>
+
+      <!-- Terminal Overlay (hidden by default) -->
+      <div id="terminal-overlay" class="fixed inset-0 z-[50] hidden bg-black/90 backdrop-blur">
+        <div class="absolute top-4 left-4 z-10">
+          <button id="btn-close-terminal" class="w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur transition">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+        <div id="terminal-container" class="absolute inset-4 bg-slate-950 rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+          <div id="terminal-fit" class="flex-1"></div>
+          <!-- Mobile shortcut bar -->
+          <div id="mobile-shortcut-bar" class="hidden fixed bottom-4 left-4 right-4 h-auto bg-slate-900 rounded-2xl border border-slate-700 p-3 shadow-2xl z-[60]">
+            <div class="grid grid-cols-5 gap-2 text-xs">
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">Ctrl</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">Alt</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">Tab</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">Esc</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">↑</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">↓</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">←</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">→</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">/</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">-</button>
+            </div>
+            <div class="grid grid-cols-5 gap-2 mt-2 text-xs">
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">|</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">~</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">`</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">!</button>
+              <button class="shortcut-btn py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-white">@</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cells Container -->
+      <div id="cells-container" class="space-y-4 mb-12">
+        <!-- Cells diisi oleh JS -->
+      </div>
+
+      <!-- Shared Session Panel -->
+      <div id="shared-session-panel" class="mb-8 hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-slate-700" id="session-panel-title">Shared Session</h3>
+          <div class="flex items-center gap-2 px-2 py-1 rounded bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            <span id="session-id-badge">—</span>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mb-3" id="session-panel-desc">Notebook dengan ID sesi sama saling tersambung</p>
+        <div class="space-y-2 mb-4">
+          <div class="text-xs font-medium text-slate-600 mb-1">Notebook lain dalam sesi ini:</div>
+          <div id="session-notebooks" class="space-y-1"></div>
+        </div>
+        <div class="border-t border-slate-200 pt-4">
+          <div class="text-xs font-medium text-slate-600 mb-2">File yang dibagikan:</div>
+          <div id="session-resources" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Bottom: Select Environment -->
+      <div class="border-t border-slate-200 pt-6 pb-12">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-sm font-semibold text-slate-700" id="label-select-env">Pilih Environment</label>
+          <button id="btn-refresh-env" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium"><i class="fa-solid fa-rotate-right mr-1"></i> <span id="btn-refresh-text">Segarkan</span></button>
+        </div>
+        <select id="env-selector" class="w-full max-w-xs px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+          <!-- options diisi via JS -->
+        </select>
+        <p class="text-xs text-slate-400 mt-2" id="env-desc">Environment dapat diubah kapan saja di dalam notebook.</p>
+      </div>
+      </div>
+      <!-- /cells-panel -->
+
+      <!-- Panel Files -->
+      <div id="files-panel" class="hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <!-- Header + Toolbar -->
+          <div class="p-4 border-b border-slate-100">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-folder-open"></i></div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-semibold text-slate-800" id="files-title">Penyimpanan Notebook</h3>
+                <div id="files-breadcrumb" class="text-[11px] text-slate-400 font-mono truncate">/</div>
+              </div>
+              <span id="files-maxhint" class="text-[10px] text-slate-400 whitespace-nowrap">Max 120 MB</span>
+            </div>
+            <!-- Search -->
+            <div class="relative mb-3">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input type="text" id="files-search" placeholder="Cari file..." class="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition" />
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="btn-files-refresh" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition" title="Segarkan"><i class="fa-solid fa-rotate"></i><span class="hidden sm:inline" id="files-refresh-text"> Segarkan</span></button>
+              <button id="btn-files-mkdir" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"><i class="fa-solid fa-folder-plus"></i> <span id="files-mkdir-text">Folder Baru</span></button>
+              <button id="btn-files-newfile" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"><i class="fa-solid fa-file-circle-plus"></i> <span id="files-newfile-text">File Baru</span></button>
+              <label class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition shadow-sm">
+                <i class="fa-solid fa-upload"></i> <span id="files-upload-text">Upload</span>
+                <input type="file" id="files-upload-input" class="hidden" multiple>
+              </label>
+              <button id="btn-files-select" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"><i class="fa-solid fa-check-double"></i> <span id="files-select-text">Pilih</span></button>
+              <button id="btn-files-download-all" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition shadow-sm"><i class="fa-solid fa-file-zipper"></i> <span id="files-download-all-text">Unduh Semua</span></button>
+            </div>
+          </div>
+
+          <!-- Bar mode pilih -->
+          <div id="files-select-bar" class="hidden flex items-center gap-3 px-4 py-2 bg-indigo-50 border-b border-indigo-100 text-xs flex-wrap">
+            <label class="flex items-center gap-2 text-indigo-700 font-medium cursor-pointer">
+              <input type="checkbox" id="files-select-all" class="rounded border-indigo-300 text-indigo-600">
+              <span id="files-select-all-text">Pilih semua</span>
+            </label>
+            <span id="files-select-count" class="text-indigo-700/80">0 dipilih</span>
+            <div class="flex-1"></div>
+            <button id="btn-files-download-selected" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium"><i class="fa-solid fa-download"></i> <span id="files-download-selected-text">Unduh Terpilih</span></button>
+            <button id="btn-files-delete-selected" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium"><i class="fa-solid fa-trash"></i> <span id="files-delete-selected-text">Hapus Terpilih</span></button>
+            <button id="btn-files-cancel-select" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium"><span id="files-cancel-select-text">Batal</span></button>
+          </div>
+
+          <!-- Zona tarik-lepas / klik untuk upload -->
+          <div id="files-dropzone" class="m-4 mb-0 rounded-xl border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 transition text-center py-6 px-4 cursor-pointer">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-300"></i>
+            <p class="text-xs text-slate-500 mt-2" id="files-drop-text">Tarik file ke sini, atau klik untuk memilih file</p>
+          </div>
+
+          <!-- Daftar file -->
+          <div class="p-4">
+            <div id="files-list" class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden"></div>
+            <div id="files-empty" class="hidden text-center py-10">
+              <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
+              <p class="text-sm text-slate-400 mt-3" id="files-empty-text">Folder kosong.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Tab Bar -->
+      <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur border-t border-slate-200 safe-area-bottom">
+        <div class="max-w-7xl mx-auto flex">
+          <button id="tab-cell" class="flex-1 flex items-center justify-center gap-2 h-14 text-sm font-medium transition" data-tab="cell">
+            <i class="fa-solid fa-code"></i> <span id="tab-cell-text">Cell</span>
+          </button>
+          <button id="tab-files" class="flex-1 flex items-center justify-center gap-2 h-14 text-sm font-medium transition" data-tab="files">
+            <i class="fa-solid fa-folder-open"></i> <span id="tab-files-text">Files</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         FILE EDITOR MODAL
+         ============================================================ -->
+    <div id="modal-file-editor" class="fixed inset-0 z-[65] hidden">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="file-editor-backdrop"></div>
+      <div class="relative w-full max-w-2xl max-h-[85vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col m-4">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-slate-900 truncate" id="file-editor-title">Edit File</h3>
+          <div class="flex items-center gap-2">
+            <button id="btn-file-save" class="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Simpan</button>
+            <button class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition" onclick="document.getElementById('modal-file-editor').classList.add('hidden')">
+              <i class="fa-solid fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <textarea id="file-editor-content" class="flex-1 w-full p-4 mono text-sm text-slate-800 bg-slate-50 resize-none outline-none min-h-[300px]" spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         FILE PREVIEW MODAL
+         ============================================================ -->
+    <div id="modal-file-preview" class="fixed inset-0 z-[65] hidden">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="file-preview-backdrop"></div>
+      <div class="relative w-full max-w-2xl max-h-[85vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col m-4">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-slate-900 truncate" id="file-preview-title">Preview</h3>
+          <button class="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition" onclick="document.getElementById('modal-file-preview').classList.add('hidden')">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+        <div id="file-preview-content" class="flex-1 overflow-auto p-4 flex items-center justify-center min-h-[300px] bg-slate-50"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         NOTEBOOK SETTINGS MODAL (password, env vars)
+         ============================================================ -->
+    <div id="modal-notebook-settings" class="fixed inset-0 z-[65] hidden">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="nb-settings-backdrop"></div>
+      <div class="relative w-full max-w-md max-h-[85vh] overflow-y-auto overscroll-contain bg-white rounded-2xl shadow-2xl p-6 border border-slate-100">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fa-solid fa-shield-halved"></i></div>
+          <h3 class="text-lg font-bold text-slate-900" id="nb-settings-title">Pengaturan Notebook</h3>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-6">
+          <p class="text-sm font-semibold text-slate-700 mb-2" id="nb-password-label">Password Notebook</p>
+          <p class="text-xs text-slate-500 mb-3" id="nb-password-desc">Kosongkan untuk menghapus password. Password di-hash dengan bcrypt.</p>
+          <div class="flex gap-2">
+            <input type="password" id="nb-password-input" placeholder="Password baru" class="flex-1 h-10 px-4 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition" />
+            <button id="btn-nb-password-save" class="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Simpan</button>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button id="btn-nb-settings-close" class="px-5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============================================================
+       ADD NOTEBOOK MODAL (diluar main agar tidak hilang saat auth)
+       ============================================================ -->
+  <div id="modal-add" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="modal-backdrop"></div>
+    <div id="modal-panel" class="relative w-full max-w-md max-h-[85vh] overflow-y-auto overscroll-contain bg-white rounded-2xl shadow-2xl p-6 border border-slate-100">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="w-6 h-6 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600"><i class="fa-solid fa-square-plus text-sm"></i></div>
+        <h3 class="text-lg font-bold text-slate-900" id="modal-title">Tambah Notebook Baru</h3>
+      </div>
+      <form id="form-add-notebook" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" id="label-name">Nama Notebook</label>
+          <input type="text" name="name" required placeholder="Contoh: Analisis Data" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" id="label-env">Environment (bahasa)</label>
+          <select name="environment" id="env-select" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+            <option value="python">Python</option>
+            <option value="nodejs">Node.js</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" id="label-session">ID Sesi (untuk koneksi antar notebook)</label>
+            <input type="text" name="sessionId" placeholder="kosongkan untuk tidak ada sesi" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+            <p class="text-xs text-slate-400 mt-1" id="session-help">Notebook dengan ID sesi sama saling tersambung.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" id="label-type">Tipe Notebook</label>
+            <select name="type" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+              <option value="long-lasting">Long-lasting</option>
+              <option value="temporary">Temporary (3 hari - 2 minggu)</option>
+            </select>
+          </div>
+        </div>
+        <div id="duration-wrap" class="hidden">
+          <label class="block text-sm font-medium text-slate-700 mb-1" id="label-duration">Durasi masa aktif (Temporary)</label>
+          <select name="durationDays" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+            <option value="3">3 hari</option>
+            <option value="7" selected>7 hari</option>
+            <option value="14">14 hari (2 minggu)</option>
+          </select>
+          <p class="text-xs text-slate-400 mt-1" id="duration-help">Habis masa aktif: notebook dihapus otomatis dan kamu diberi notifikasi.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" id="label-ram">Max RAM</label>
+            <input type="text" name="maxRam" placeholder="512m" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+            <p class="text-xs text-slate-400 mt-1" id="ram-help">Kosongkan untuk tanpa batas.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" id="label-cpu">Max CPU</label>
+            <input type="text" name="maxCpu" placeholder="0.5" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+            <p class="text-xs text-slate-400 mt-1" id="cpu-help">Kosongkan untuk tanpa batas.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" id="label-storage">Max Storage</label>
+            <input type="text" name="maxStorage" placeholder="10g" class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition">
+            <p class="text-xs text-slate-400 mt-1" id="storage-help">Kosongkan untuk tanpa batas.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <input type="checkbox" name="keepAlive" id="chk-keepalive" class="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+          <label for="chk-keepalive" class="text-sm text-slate-700 leading-relaxed" id="label-keepalive">
+            <strong>Cell tetap jalan walau tidak dibuka 6 jam?</strong><br>
+            <span class="font-normal text-slate-500">Hanya untuk long-lasting. Jika tidak dicentang, cell mati setelah 6 jam idle.</span>
+          </label>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" id="btn-modal-cancel" class="px-5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Batal</button>
+          <button type="submit" class="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md">Buat Notebook</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SETTINGS MODAL (bahasa + tema)
+       ============================================================ -->
+  <div id="modal-settings" class="fixed inset-0 z-[65] hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="settings-backdrop"></div>
+    <div id="settings-panel" class="relative w-full max-w-lg max-h-[85vh] overflow-y-auto overscroll-contain bg-white rounded-2xl shadow-2xl p-6 border border-slate-100">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fa-solid fa-gear"></i></div>
+        <h3 class="text-lg font-bold text-slate-900" id="settings-title">Pengaturan</h3>
+      </div>
+
+      <div class="mb-6">
+        <p class="text-sm font-semibold text-slate-700 mb-2" id="settings-lang-label">Bahasa</p>
+        <div class="flex gap-2">
+          <button id="lang-id" class="lang-btn flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium transition" data-lang="id">🇮🇩 Indonesia</button>
+          <button id="lang-en" class="lang-btn flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium transition" data-lang="en">🇬🇧 English</button>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <p class="text-sm font-semibold text-slate-700 mb-2" id="settings-theme-label">Tema</p>
+        <div id="theme-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div class="flex justify-end">
+        <button id="btn-settings-close" class="px-5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifikasi Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-[70] bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3">
+    <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></div>
+    <div>
+      <div class="text-sm font-medium" id="toast-title">Berhasil</div>
+      <div class="text-xs text-slate-300" id="toast-message">Operasi berhasil</div>
+    </div>
+  </div>
+
+</body>
+</html>
